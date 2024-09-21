@@ -1,105 +1,70 @@
 #include <opencv2/core.hpp>
-#include <opencv2/core/utility.hpp>
 #include "opencv2/imgcodecs.hpp"
 #include <opencv2/highgui.hpp>
 #include <iostream>
-#include <sstream>
 
 using namespace std;
 using namespace cv;
 
-static void help()
-{
-    cout
-        << "\n--------------------------------------------------------------------------" << endl
-        << "This program shows how to scan image objects in OpenCV (cv::Mat). As use case"
-        << " we take an input image and divide the native color palette (255) with the "  << endl
-        << "input. Shows C operator[] method, iterators and at function for on-the-fly item address calculation."<< endl
-        << "Usage:"                                                                       << endl
-        << "./how_to_scan_images <imageNameToUse> <divideWith> [G]"                       << endl
-        << "if you add a G parameter the image is processed in gray scale"                << endl
-        << "--------------------------------------------------------------------------"   << endl
-        << endl;
+// Takes the reference of the input and output image and lookup table
+void quantize(Mat& input, Mat& output, const Mat& table){
+    CV_Assert(input.depth() == CV_8U);
+    CV_Assert(output.depth() == CV_8U);
+
+	int rows = input.rows;
+	int cols = input.cols;
+	int channels = input.channels();
+
+	cols = cols * channels;
+
+    // Go through each row in the image
+	for (int x = 0; x < rows; x++){
+		uchar* ptrIn  = input.ptr<uchar>(x);
+		uchar* ptrOut = output.ptr<uchar>(x);
+
+        // For every channel in each pixel in the row, take its intensity and
+        // quantize using the lookup table, take the result and place it in the
+        // appropriate spot in the output image
+        
+		for (int y = 0; y < cols; y++){
+			ptrOut[y] = table.at<uchar>(0, ptrIn[y]);
+		}
+	}
 }
 
-Mat& ScanImageAndReduceC(Mat& I, const uchar* table);
-Mat& ScanImageAndReduceIterator(Mat& I, const uchar* table);
-Mat& ScanImageAndReduceRandomAccess(Mat& I, const uchar * table);
+int main(int argc, char* argv[]){
+    Mat input_image, output_image;
+    int divisor;
 
-int main( int argc, char* argv[])
-{
-    help();
-    if (argc < 3)
-    {
-        cout << "Not enough parameters" << endl;
-        return -1;
+    // Error checking
+	if (argc < 3){
+		cout << "Use case is ./a.out image_file divisor" << endl;
+		return -1;
+	}
+
+	divisor = stoi(argv[2]);
+    if (divisor < 1){
+        cout << "Bad divisor" << endl;
+		return -1;
     }
 
-    Mat I, J;
-    if( argc == 4 && !strcmp(argv[3],"G") )
-        I = imread(argv[1], IMREAD_GRAYSCALE);
-    else
-        I = imread(argv[1], IMREAD_COLOR);
-
-    if (I.empty())
-    {
-        cout << "The image" << argv[1] << " could not be loaded." << endl;
+	input_image = imread(argv[1]);
+    if (input_image.empty()) {
+        cout << "Error: Bad Image!" << endl;
         return -1;
     }
-
-    //! [dividewith]
-    int divideWith = 0; // convert our input string to number - C++ style
-    stringstream s;
-    s << argv[2];
-    s >> divideWith;
-    if (!s || !divideWith)
-    {
-        cout << "Invalid number entered for dividing. " << endl;
-        return -1;
-    }
-
-
-    uchar table[256];
-    for (int i = 0; i < 256; ++i)
-       table[i] = (uchar)(divideWith * (i/divideWith));
-    //! [dividewith]
-
-
-        cv::Mat clone_i = I.clone();
-        J = ScanImageAndReduceC(clone_i, table);
     
-    imshow("super window", J);
+    // Set empty output to the same size and type as input
+	output_image = Mat::zeros(input_image.size(), input_image.type());
+
+
+    // Makes a table used to quantize color intensity by the given divisor
+	Mat lookUpTable(1, 256, CV_8U);
+	for (int i = 0; i < 256; i++){
+		lookUpTable.at<uchar>(0, i) = (uchar)(divisor * (i / divisor));
+	}
+
+	quantize(input_image, output_image, lookUpTable);
+    imshow("cool window", output_image);
     waitKey(0);
-     return 0;
 }
-
-//! [scan-c]
-Mat& ScanImageAndReduceC(Mat& I, const uchar* const table)
-{
-    // accept only char type matrices
-    CV_Assert(I.depth() == CV_8U);
-
-    int channels = I.channels();
-
-    int nRows = I.rows;
-    int nCols = I.cols * channels;
-
-    if (I.isContinuous())
-    {
-        nCols *= nRows;
-        nRows = 1;
-    }
-
-    int i,j;
-    uchar* p;
-    for( i = 0; i < nRows; ++i)
-    {
-        p = I.ptr<uchar>(i);
-        for ( j = 0; j < nCols; ++j)
-        {
-            p[j] = table[p[j]];
-        }
-    }
-    return I;
-}
-//! [scan-c]
