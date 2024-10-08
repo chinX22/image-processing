@@ -1,2 +1,3 @@
-#ignore cmake build
+#ignore cmake build and exe
 build/
+a.out
