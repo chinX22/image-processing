@@ -97,10 +97,7 @@ int main(int argc, char *argv[]){
 		waitKey(0);
 
 	} else if(strcmp(argv[1], "V") == 0 && strcmp(argv[2], "0") == 0){
-		string droidcam_ip = "10.0.0.65";
-		string rtsp_url = "http://" + droidcam_ip + ":4747/video";
-		VideoCapture cap(rtsp_url);
-		//VideoCapture cap(0);
+		VideoCapture cap(0);
 
 		if (!cap.isOpened()){
 				cerr << "Error: Error opening camera!" << endl;
